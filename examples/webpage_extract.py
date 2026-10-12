@@ -11,7 +11,7 @@ if __name__ == '__main__':
 
 
     # 2. Create client
-    client = LLMProxy()
+    client = LLMProxy(backend="llmproxy")
 
     # 3. Call LLM with the HTML as the query
     response = client.generate(

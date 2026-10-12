@@ -14,6 +14,10 @@ from urllib3.util.retry import Retry
 
 from dotenv import load_dotenv
 
+from .ollama import OllamaBackend
+
+BACKENDS = ("llmproxy", "ollama")
+
 
 # -----------------------
 # Config & HTTP utilities
@@ -74,9 +78,21 @@ def _build_session() -> requests.Session:
 # -----------------------
 
 class LLMProxy:
-    def __init__(self) -> None:
-        self.config = ClientConfig.from_env()
+    def __init__(self, backend: str = "llmproxy") -> None:
+        if backend not in BACKENDS:
+            raise ValueError(f"Unknown backend {backend!r}. Expected one of: {', '.join(BACKENDS)}")
+        self.backend = backend
         self.session = _build_session()
+        self._ollama: Optional[OllamaBackend] = None
+
+        if backend == "ollama":
+            load_dotenv(dotenv_path=Path.cwd() / ".env", override=True)
+            self._ollama = OllamaBackend(self.session, ClientConfig.timeout)
+        else:
+            self.config = ClientConfig.from_env()
+
+    def _unsupported(self, feature: str) -> Dict:
+        return {"error": f"{feature} is not supported with backend='{self.backend}'", "status_code": None}
 
     def _headers(self, request_type: str, extra: Optional[Dict[str, str]] = None) -> Dict[str, str]:
         base = {
@@ -132,6 +148,8 @@ class LLMProxy:
         """
         Calls the retrieval endpoint. Returns server JSON
         """
+        if self._ollama:
+            return self._unsupported("retrieve")
         payload = {
             "query": query,
             "session_id": session_id,
@@ -144,7 +162,17 @@ class LLMProxy:
         """
         Fetches model info.
         """
+        if self._ollama:
+            return self._ollama.model_info()
         return self._post_json("model_info", {})
+
+    def clear_session(self, session_id: str) -> Dict:
+        """
+        Deletes stored conversation history for a session (ollama backend only).
+        """
+        if self._ollama:
+            return self._ollama.clear_session(session_id)
+        return self._unsupported("clear_session")
 
     def generate(
         self,
@@ -195,6 +223,13 @@ class LLMProxy:
             response text. On error, contains "error" and optionally "status_code".
         """
         resolved_session_id = session_id or "GenericSession"
+
+        if self._ollama:
+            if websearch:
+                return self._unsupported("websearch")
+            if rag_usage:
+                return self._unsupported("rag_usage")
+
         media_refs = self._normalize_media_refs(media)
         if isinstance(media_refs, dict) and "error" in media_refs:
             return media_refs
@@ -208,6 +243,18 @@ class LLMProxy:
                     "status_code": None,
                 }
             options["output_schema"] = model_json_schema()
+
+        if self._ollama:
+            return self._ollama.generate(
+                model=model,
+                system=system,
+                query=query,
+                session_id=resolved_session_id,
+                lastk=lastk,
+                temperature=temperature,
+                output_schema=options.get("output_schema"),
+                media=media_refs,
+            )
 
         payload = {
             "model": model,
@@ -244,6 +291,8 @@ class LLMProxy:
         """
         Generic uploader for any file. Uses streaming upload and returns server JSON or error.
         """
+        if self._ollama:
+            return self._unsupported("upload_file")
         path = Path(file_path)
         if not path.exists():
             return {"error": f"File not found: {path}", "status_code": None}
@@ -298,6 +347,8 @@ class LLMProxy:
         """
         Step 1 of URI upload flow: request an assigned/presigned upload URI.
         """
+        if self._ollama:
+            return self._unsupported("upload_init")
         payload = {
             "content_type": content_type,
             "session_id": session_id,
@@ -348,6 +399,8 @@ class LLMProxy:
         """
         Upload media once and return a reusable media reference for `generate(...)`.
         """
+        if self._ollama:
+            return self._ollama.upload_media(file_path, content_type)
         if not self._is_supported_media_type(content_type):
             return {
                 "error": f"Unsupported media type: {content_type}. Only image/* and audio/* are supported",
@@ -488,6 +541,8 @@ class LLMProxy:
         """
         Uploads raw text content as a 'file' part.
         """
+        if self._ollama:
+            return self._unsupported("upload_text")
         params = {
             "description": description,
             "session_id": session_id,

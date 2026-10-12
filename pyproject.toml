@@ -1,6 +1,6 @@
 [project]
 name = "llmproxy"
-version = "0.1.4"
+version = "0.1.5"
 description = "Python client library for the LLMProxy server"
 readme = "README.md"
 authors = [

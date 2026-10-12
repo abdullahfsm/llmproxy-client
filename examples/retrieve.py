@@ -2,7 +2,7 @@ from llmproxy import LLMProxy
 
 if __name__ == '__main__':
 
-    client = LLMProxy()
+    client = LLMProxy(backend="llmproxy")
     response = client.retrieve(
         query = 'Tell me about green tim?',
         session_id='TestSession',

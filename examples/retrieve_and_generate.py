@@ -32,7 +32,7 @@ def rag_context_string_simple(rag_context):
 
 if __name__ == '__main__':
 
-    client = LLMProxy()
+    client = LLMProxy(backend="llmproxy")
 
     # Add several documents to session_id = "RAG"
 

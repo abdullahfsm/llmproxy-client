@@ -15,7 +15,7 @@ class CalendarEvent(BaseModel):
 
 
 if __name__ == '__main__':
-    client = LLMProxy()
+    client = LLMProxy(backend="llmproxy")
 
     response = client.generate(
         model='gemini-2.5-flash-lite',

@@ -1,7 +1,7 @@
 from llmproxy import LLMProxy
 
 if __name__ == "__main__":
-    client = LLMProxy()
+    client = LLMProxy(backend="llmproxy")
 
     image = client.upload_media(
         file_path="test_image.jpg",

@@ -1,9 +1,8 @@
-import requests
 from llmproxy import LLMProxy
 
 if __name__ == '__main__':
     # 1. Create client
-    client = LLMProxy()
+    client = LLMProxy(backend="llmproxy")
 
     # 2. Setup your parameters
     model_name = 'gemini-2.5-flash-lite'
@@ -16,9 +15,9 @@ if __name__ == '__main__':
     session_id_value = 'conversation'
     rag_enabled = False
 
-    # 3. The program runs in a loop, allowing you to enter multiple consequetive queries. 
+    # 3. The program runs in a loop, allowing you to enter multiple consecutive queries.
     #    After typing a query, press Enter to send it to the LLMProxy.
-    #    To stop the loop, type "ctrl+x" and press Enter.
+    #    To stop the loop, type "exit" and press Enter.
     while True:
         query_prompt = input("Enter your query or type EXIT to stop the program: ")
         if query_prompt.strip().lower() == "exit": 
@@ -34,5 +33,5 @@ if __name__ == '__main__':
             rag_usage = rag_enabled,
         )
 
-        print(response)
+        print(response.get("result", response.get("error")))
 

@@ -42,6 +42,43 @@ response = client.generate(
 print(response)
 ```
 
+## Local Models with Ollama
+
+If the proxy is unavailable, you can run the same code against local models through [Ollama](https://ollama.com). No API key or endpoint is needed.
+
+1. Install Ollama for your OS: https://ollama.com/download
+2. Pick a model from the library: https://ollama.com/library (small models like `llama3.2` or `qwen2.5:3b` run on most laptops)
+3. Download it:
+
+```bash
+ollama pull llama3.2
+```
+
+Ollama runs in the background after installation. For troubleshooting and docs, see https://github.com/ollama/ollama.
+
+```python
+client = LLMProxy(backend="ollama")
+
+response = client.generate(
+    model="llama3.2",  # a local model name, see client.model_info()
+    system="Answer briefly and clearly.",
+    query="Who are the Jumbos?",
+)
+print(response["result"])
+```
+
+The default backend is `"llmproxy"` (the server). To use a remote Ollama server, set `OLLAMA_HOST` in `.env`.
+
+Supported with `backend="ollama"`:
+- `generate(...)` with `system`, `query`, `temperature`, `output_schema`, `session_id`, `lastk`, `media`
+- `upload_media(...)` for images only (`image/*`). Images are copied to `~/.llmproxy/media/`. Use a vision model such as `gemma3` or `qwen2.5vl`; text-only models return an error.
+- `model_info()` lists your locally installed models
+- `clear_session(session_id)` deletes a session's local history
+
+Conversation history works like the server: every successful call is saved to its session, and `lastk` sends the last *k* question/answer turns. History is stored in `~/.llmproxy/sessions/` and is separate from your history on the server. Small local models have short context windows, so keep `lastk` small.
+
+Not supported (these return an `"error"`): `websearch`, `rag_usage`, audio, `retrieve`, `upload_text`, `upload_file`. `cache_match_thresh` is ignored.
+
 ## Core Methods
 
 ### `generate(...)`
